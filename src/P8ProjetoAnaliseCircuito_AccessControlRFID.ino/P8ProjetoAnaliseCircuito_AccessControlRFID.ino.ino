@@ -1,18 +1,36 @@
- #include<stdio.h>
+/**========================================================================================================
+ *       Projeto: Leitor de RFID
+ *       Disciplina: Análise de Circuitos
+ *       Dupla: 
+ *          Tiago Sousa Rocha
+ *          Jonatan
+ *       Descricao:
+ *          Este circuito permite realizar o controle de acesso através do acionamento de uma saída mediante
+ *       A liberação do acesso por meio da leitura de um cartao RFID que esteja cadastrado no sistema.
+ *
+ *=======================================================================================================*/
+#include<Wire.h>
+#include<stdio.h>
 #include<SPI.h>
 #include<MFRC522.h>
 
-
+/** -------------------------*/
 /**  Definicoes do projeto   */
-#define LED 13
-// Pino de acionamento do rele
-#define ATUADOR 7
-// Pino de cadastramento de cartao
-#define ADD_CARD 6
-// Pino de remocao de cartao
-#define DEL_CARD 5
+/** -------------------------*/
 // Maximo de Cartoes que podem ser cadastrados
 #define MAX_CARD 10
+
+#define LED 8             // Define o pino do LED
+#define ATUADOR 7         // Pino de acionamento do rele
+#define ADD_CARD 6        // Pino de cadastramento de cartao
+#define DEL_CARD 5        // Pino de remocao de cartao
+#define RFID_RST_PIN 9    // Define o pino de reset do leitor RFID
+#define RFID_SS_PIN 10    // Pino de seleção do leitor RFID
+MFRC522 mfrc522(RFID_SS_PIN, RFID_RST_PIN);
+
+/** -------------------------*/
+/**  Estrutura de dados      */
+/** -------------------------*/
 
 // Estrutura de dados da aplicacao
 typedef struct {
@@ -23,11 +41,27 @@ typedef struct {
   } state;
 }TDataApplication;
 
+typedef unsigned char BYTE;
+typedef unsigned long DWORD;
 
-/**   VARIAVEIS   */
+
+/** -------------------------*/
+/**  Variaveis globais       */
+/** -------------------------*/
 TDataApplication app;
+char msg[40];
+
+
+/** -------------------------*/
+/**  Prototipos de funcao    */
+/** -------------------------*/
+void verificaNovoCartao();
 
 void setup() {
+  Wire.begin(); //INICIALIZA A BIBLIOTECA WIRE
+  SPI.begin(); //INICIALIZA O BARRAMENTO SPI
+  mfrc522.PCD_Init(); //INICIALIZA MFRC522
+  
   app.state.add = 0;
   app.state.del = 0;
   app.state.read = 0;
@@ -43,6 +77,8 @@ void setup() {
 
   //
   digitalWrite(LED, HIGH);
+
+  Serial.write("==============================\tINICIANDO\t================\n");
 }
 
 void loop() {
@@ -52,27 +88,50 @@ void loop() {
     app.state.del =  (digitalRead(DEL_CARD)==1)? 1 : 0;
     // Define o estado do READ
     if ((app.state.add == 1) || (app.state.del == 1)) {
-      Serial.write ("DEBUG: Eh para fazer cadastro e remocao de cartao\n");
+      //Serial.write ("DEBUG: Eh para fazer cadastro e remocao de cartao\n");
       // É para fazer o cadastramento ou remocao do cartao
       app.state.read = 1;
     } else {
-      Serial.write ("DEBUG: Eh para fazer a leitura de cartao\n");
+      //Serial.write ("DEBUG: Eh para fazer a leitura de cartao\n");
       // É para fazer a leitura do cartao e liberar o acesso
       app.state.read = 0;
     }
 
-
-
-  // put your main code here, to run repeatedly:
-  if (Serial.available()>0){
-    Serial.write("DEBUG...\n");
-    digitalWrite(LED, HIGH);
-    delay(500);
-
-  }
+    
+    verificaNovoCartao();
+    
   
-  digitalWrite(LED, LOW);
-  delay(100);
-  digitalWrite(LED, HIGH);
-  delay(100);
+    delay(100);
+}
+
+
+
+
+void verificaNovoCartao()
+{
+    DWORD cardnumber = 0;
+
+    sprintf(msg, ""); 
+    if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial())  //VERIFICA SE O CARTÃO PRESENTE NO LEITOR É DIFERENTE DO ÚLTIMO CARTÃO LIDO. CASO NÃO SEJA, FAZ
+      return; 
+      
+    // Leu um novo cartao RFID
+    String strID = ""; 
+    Serial.write("DEBUG: [");
+    for (byte i = 0; i < 4; i++) {
+      strID += (mfrc522.uid.uidByte[i] < 0x10 ? "0" : "") + String(mfrc522.uid.uidByte[i], HEX) + (i!=3 ? ":" : "");
+      sprintf(msg, "(%d) ", mfrc522.uid.uidByte[i]);      
+      Serial.write(msg);
+    }
+    
+    Serial.write("]\n");
+    
+    strID.toUpperCase();
+    //char msg[30];
+    //sprintf(msg, "DEBUG: Novo cartao lido: %s\n", strID);
+    //Serial.write(msg);
+
+
+    mfrc522.PICC_HaltA(); //PARADA DA LEITURA DO CARTÃO
+    mfrc522.PCD_StopCrypto1(); //PARADA DA CRIPTOGRAFIA NO PCD
 }
