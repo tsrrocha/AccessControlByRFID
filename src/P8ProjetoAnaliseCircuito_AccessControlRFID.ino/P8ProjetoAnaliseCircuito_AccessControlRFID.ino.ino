@@ -9,8 +9,11 @@
  *       A liberação do acesso por meio da leitura de um cartao RFID que esteja cadastrado no sistema.
  *
  *=======================================================================================================*/
-#include<EEPROM.h>
-#include<Wire.h>
+
+/** -------------------------*/
+/**  Bibliotecas importadas  */
+/** -------------------------*/
+//#include<EEPROM.h>
 #include<stdio.h>
 #include<SPI.h>
 #include<MFRC522.h>
@@ -31,6 +34,7 @@
 // TEMPOS
 #define TEMPO_LED         T_1_SEG
 #define TEMPO_SAIDA       T_5_SEG
+
 // PINOS
 #define LED_OK            3   // Define o pino do LED de Confirmacao
 #define LED_FAIL          2   // Define o pino do LED de Falha
@@ -101,7 +105,6 @@ byte delCardIntoList(TList * lst, DWORD card);
 
 // Funcao de configuracao da Aplicacao
 void setup() {
-  Wire.begin();       // Inicializa a biblioteca Wire
   SPI.begin();        // Inicializa a biblioteca SPI
   mfrc522.PCD_Init(); // Inicializa o modulo MFRC522
 
